@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css" 
+    rel="stylesheet" 
+    integrity="sha384-F3w7mX95PdgyTmZZMECAngseQB83DfGTowi0iMjiWaeVhAn4FJkqJByhZMI3AhiU" 
+    crossorigin="anonymous">
+    <title>Video to GIF Converter</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f9f9f9;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: bold;
+        }
+        .btn-custom {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1rem;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+            margin:10px;
+        }
+        .btn-custom:hover {
+            background-color: #0056b3;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            font-weight: bold;
+            color: #333;
+        }
+        input[type="number"], input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            font-size: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        input[type="number"]:focus, input[type="file"]:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+        .gif-preview-container {
+            margin-top: 30px;
+            text-align: center;
+        }
+        #gif-preview {
+            max-width: 100%;
+            border-radius: 8px;
+        }
+        .hidden {
+            display: none;
+        }
+        .alert-custom {
+            text-align: center;
+            padding: 10px;
+            background-color: #28a745;
+            color: white;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>Video to GIF Converter</h1>
+    </div>
+
+    <!-- Upload Form -->
+    <form id="uploadForm" enctype="multipart/form-data">
+        <div class="form-group">
+            <label for="video">Upload Video:</label>
+            <input type="file" id="video" name="video" accept="video/*" required>
+        </div>
+        <button type="submit" class="btn-custom">Upload</button>
+    </form>
+
+    <!-- Conversion Form -->
+    <div id="controls" class="hidden">
+        <form id="convertForm">
+            <div class="form-group">
+                <label for="start">Start Time (sec):</label>
+                <input type="number" id="start" name="start_time" required>
+            </div>
+            <div class="form-group">
+                <label for="end">End Time (sec):</label>
+                <input type="number" id="end" name="end_time" required>
+            </div>
+            <button type="submit" class="btn-custom">Convert to GIF</button>
+        </form>
+    </div>
+
+    <!-- Download Button -->
+    <button type="button" id="downloadButton" class="btn-custom hidden" onclick="downloadGif()">Download GIF</button>
+
+    <!-- GIF Preview -->
+    <div class="gif-preview-container">
+        <h3>GIF Preview:</h3>
+        <img id="gif-preview" src="" alt="GIF Preview" class="hidden">
+    </div>
+</div>
+
+<script>
+    let videoPath = '';
+    let gifPath = '';
+    const controls = document.getElementById('controls');
+    const downloadButton = document.getElementById('downloadButton');
+    const gifPreview = document.getElementById('gif-preview');
+
+    // Handle video upload
+    document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const response = await fetch('/upload', {
+            method: 'POST',
+            body: formData,
+        });
+
+        const data = await response.json();
+        if (data.video_path) {
+            videoPath = data.video_path;
+            alert(data.message);
+            controls.classList.remove('hidden');  // Show conversion form
+        } else {
+            alert(data.error);
+        }
+    });
+
+    // Handle GIF conversion
+    document.getElementById('convertForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const start = document.getElementById('start').value;
+        const end = document.getElementById('end').value;
+
+        if (!start || !end || isNaN(start) || isNaN(end)) {
+            alert('Please provide valid start and end times.');
+            return;
+        }
+
+        const response = await fetch('/convert', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ video_path: videoPath, start_time: start, end_time: end }),
+        });
+
+        const data = await response.json();
+        if (data.gif_path) {
+            gifPath = data.gif_path;
+            gifPreview.src = gifPath;
+            gifPreview.classList.remove('hidden');  // Show GIF preview
+            downloadButton.classList.remove('hidden');  // Show download button
+            alert(data.message);
+        } else {
+            alert(data.error);
+        }
+    });
+
+    // Handle GIF download
+    function downloadGif() {
+    // Create a temporary anchor tag (<a>) element
+    const a = document.createElement('a');
+    a.href = gifPath;  // The URL of the GIF
+    a.download = gifPath.split('/').pop();  // The filename will be extracted from the path
+    document.body.appendChild(a);  // Append the anchor tag to the body (required for Firefox)
+    
+    // Programmatically click the anchor tag to start the download
+    a.click();
+    
+    // Remove the anchor tag from the document after the download is triggered
+    document.body.removeChild(a);
+}
+
+</script>
+
+</body>
+</html>
